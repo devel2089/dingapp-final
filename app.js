@@ -31,8 +31,15 @@ if (cluster.isWorker) {
 //const connectionString = 'postgresql://postgres:postgres123@localhost:3000/crudapp'
 //change on deploy
 
-const { Client } = require('pg');
+const {Pool, Client } = require('pg');
 
+const pool = new Pool({
+  user: 'ding',
+  host: '138.197.149.207',
+  database: 'ding',
+  password: 'ding1',
+  port: 5432,
+})
     const client = new Client({
         user: 'ding',
         host: '138.197.149.207',
@@ -61,8 +68,8 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
 app.get('/query',function(req,res){
-client.connect();
-client.query('SELECT * FROM sqldata',function(err,result){
+pool.connect();
+pool.query('SELECT * FROM sqldata',function(err,result){
     if(err) {
         return console.error('error running query',err);
     }
@@ -74,7 +81,7 @@ client.query('SELECT * FROM sqldata',function(err,result){
 
 app.post('/add',function(req,res){
     
-    client.query ('INSERT INTO sqldata(name,query,des) VALUES($1,$2,$3)',[req.body.name,req.body.query,req.body.des]
+    pool.query ('INSERT INTO sqldata(name,query,des) VALUES($1,$2,$3)',[req.body.name,req.body.query,req.body.des]
     
 );
     res.redirect('/query');
@@ -83,7 +90,7 @@ app.post('/add',function(req,res){
 
 app.delete('/delete/:id',function(req,res){
    
-    client.query("DELETE FROM sqldata WHERE id = $1",
+    pool.query("DELETE FROM sqldata WHERE id = $1",
         [req.params.id]);
         res.redirect(200,'/query')
     
@@ -91,7 +98,7 @@ app.delete('/delete/:id',function(req,res){
 
 //edit
 app.post('/edit',function(req,res){
-    client.query("UPDATE sqldata SET name=$1,query=$2,des=$3 WHERE id =$4",[req.body.name,req.body.query,req.body.des,req.body.id]);
+    pool.query("UPDATE sqldata SET name=$1,query=$2,des=$3 WHERE id =$4",[req.body.name,req.body.query,req.body.des,req.body.id]);
     res.redirect('/query')
 })
 
@@ -100,9 +107,9 @@ app.post('/edit',function(req,res){
 
 
 app.get('/', function (req, res) {
-    client.connect();
+    pool.connect();
     
-    client.query('SELECT * FROM sqldata', function (err, result) {
+    pool.query('SELECT * FROM sqldata', function (err, result) {
         if (err) {
             return console.error('error running query', err);
         }
@@ -114,9 +121,9 @@ app.get('/', function (req, res) {
         
 });
 app.get('/sqlquery', function (req, res) {
-    client.connect();
+    pool.connect();
     
-    client.query('SELECT * FROM sqldata', function (err, result) {
+    pool.query('SELECT * FROM sqldata', function (err, result) {
         if (err) {
             return console.error('error running query', err);
         }
@@ -163,9 +170,9 @@ app.post('/stream', (req, res) => {
     app.post('/upload', (req, res) => {
         upload(req, res, (err) => {
             // DELETE from the tables 
-            client.connect()
-            client.query(`DELETE from public."testtable";`)
-            client.query(`DELETE from public."fbai";`)
+            pool.connect()
+            pool.query(`DELETE from public."testtable";`)
+            pool.query(`DELETE from public."fbai";`)
             /*beginning file upload 
             /*postgres from*/
             
@@ -173,7 +180,7 @@ app.post('/stream', (req, res) => {
             
                 var fileup1 = streamifier.createReadStream(req.files['fbai'][0].buffer)
                 var fileup2 = streamifier.createReadStream(req.files['testtable'][0].buffer)
-                client.connect();
+                pool.connect();
                 var streamFile1 = client.query(copyFrom(`COPY fbai FROM STDIN With CSV HEADER DELIMITER ','`));
 
                 fileup1.pipe(streamFile1);
@@ -192,15 +199,15 @@ app.post('/stream', (req, res) => {
 
             } else if (typeof (req.files['fbai']) != "undefined") {
                 var fileup1 = streamifier.createReadStream(req.files['fbai'][0].buffer)
-                client.connect();
-                var streamFile1 = client.query(copyFrom(`COPY fbai FROM STDIN With CSV HEADER DELIMITER ','`));
+                pool.connect();
+                var streamFile1 = pool.query(copyFrom(`COPY fbai FROM STDIN With CSV HEADER DELIMITER ','`));
                 fileup1.pipe(streamFile1);
             } else if (typeof (req.files['testtable']) != "undefined") {
                 var fileup2 = streamifier.createReadStream(req.files['testtable'][0].buffer)
-                client.connect();
-                var streamFile2 = client.query(copyFrom(`COPY testtable FROM STDIN With CSV HEADER DELIMITER ','`));
+                pool.connect();
+                var streamFile2 = pool.query(copyFrom(`COPY testtable FROM STDIN With CSV HEADER DELIMITER ','`));
                 fileup2.pipe(streamFile2);
-                client.query(`DO $$
+                pool.query(`DO $$
                             BEGIN
                             IF EXISTS (select * from public."Transactions" where "OrderID" = (select "OrderID" from public."testtable" where "OrderID" is not null order by "DateTime" ASC LIMIT 1))
                             THEN DELETE from public."testtable";
@@ -227,7 +234,7 @@ app.post('/stream', (req, res) => {
     app.post('/postsql', (req, res) => {
         var postsqlquery = `${req.body.selecta}`
         client.connect();
-        client.query(postsqlquery);
+        pool.query(postsqlquery);
         res.redirect('/sqlquery')
 
 
