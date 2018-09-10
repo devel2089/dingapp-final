@@ -49,6 +49,7 @@ const pool = new Pool({
     });
 
 client.connect();
+pool.connect();
 
 
 //Set Default ext .dust
@@ -68,7 +69,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
 
 app.get('/query',function(req,res){
-pool.connect();
+
 pool.query('SELECT * FROM sqldata',function(err,result){
     if(err) {
         return console.error('error running query',err);
@@ -107,7 +108,7 @@ app.post('/edit',function(req,res){
 
 
 app.get('/', function (req, res) {
-    pool.connect();
+   
     
     pool.query('SELECT * FROM sqldata', function (err, result) {
         if (err) {
@@ -121,7 +122,7 @@ app.get('/', function (req, res) {
         
 });
 app.get('/sqlquery', function (req, res) {
-    pool.connect();
+ 
     
     pool.query('SELECT * FROM sqldata', function (err, result) {
         if (err) {
@@ -170,9 +171,9 @@ app.post('/stream', (req, res) => {
     app.post('/upload', (req, res) => {
         upload(req, res, (err) => {
             // DELETE from the tables 
-            pool.connect()
-            pool.query(`DELETE from public."testtable";`)
-            pool.query(`DELETE from public."fbai";`)
+        
+            client.query(`DELETE from public."testtable";`)
+            client.query(`DELETE from public."fbai";`)
             /*beginning file upload 
             /*postgres from*/
             
@@ -180,7 +181,6 @@ app.post('/stream', (req, res) => {
             
                 var fileup1 = streamifier.createReadStream(req.files['fbai'][0].buffer)
                 var fileup2 = streamifier.createReadStream(req.files['testtable'][0].buffer)
-                pool.connect();
                 var streamFile1 = client.query(copyFrom(`COPY fbai FROM STDIN With CSV HEADER DELIMITER ','`));
 
                 fileup1.pipe(streamFile1);
@@ -199,15 +199,15 @@ app.post('/stream', (req, res) => {
 
             } else if (typeof (req.files['fbai']) != "undefined") {
                 var fileup1 = streamifier.createReadStream(req.files['fbai'][0].buffer)
-                pool.connect();
-                var streamFile1 = pool.query(copyFrom(`COPY fbai FROM STDIN With CSV HEADER DELIMITER ','`));
+              
+                var streamFile1 = client.query(copyFrom(`COPY fbai FROM STDIN With CSV HEADER DELIMITER ','`));
                 fileup1.pipe(streamFile1);
             } else if (typeof (req.files['testtable']) != "undefined") {
                 var fileup2 = streamifier.createReadStream(req.files['testtable'][0].buffer)
-                pool.connect();
-                var streamFile2 = pool.query(copyFrom(`COPY testtable FROM STDIN With CSV HEADER DELIMITER ','`));
+               
+                var streamFile2 = client.query(copyFrom(`COPY testtable FROM STDIN With CSV HEADER DELIMITER ','`));
                 fileup2.pipe(streamFile2);
-                pool.query(`DO $$
+                client.query(`DO $$
                             BEGIN
                             IF EXISTS (select * from public."Transactions" where "OrderID" = (select "OrderID" from public."testtable" where "OrderID" is not null order by "DateTime" ASC LIMIT 1))
                             THEN DELETE from public."testtable";
@@ -224,7 +224,7 @@ app.post('/stream', (req, res) => {
 
                 });
             } else {
-
+		
                 res.redirect('./');
             }
 
